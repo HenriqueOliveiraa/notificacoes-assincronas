@@ -278,24 +278,7 @@ Recursos: `healthcheck` em MySQL e Kafka, `depends_on: condition: service_health
 
 Testcontainers é o diferencial que prova o fluxo assíncrono real.
 
----
-
-## 13. Ordem de implementação sugerida
-
-1. **Scaffold** — parent pom, módulos, `contracts` (AlertMessage + enums).
-2. **Infra** — docker-compose (MySQL + Kafka) + Dockerfiles + profiles.
-3. **notification-api** — CRUD de canais + testes.
-4. **notification-api** — disparo + producer + resolução de template + testes.
-5. **alert-processor** — consumer + event store + strategies + status endpoint.
-6. **alert-processor** — retry + DLQ + idempotência + testes.
-7. **Logging JSON + correlationId** ponta a ponta.
-8. **Testcontainers** (integração) + polimento.
-9. **README** — execução, endpoints, decisões e trade-offs.
-10. **Smoke test** completo via docker-compose.
-
----
-
-## 14. Decisões de design (resumo p/ README)
+## 13. Decisões de design (resumo p/ README)
 
 | Decisão | Motivo | Trade-off |
 |---------|--------|-----------|
@@ -306,32 +289,5 @@ Testcontainers é o diferencial que prova o fluxo assíncrono real.
 | Kafka KRaft (sem Zookeeper) | setup moderno/simples | — |
 | Retry em memória + DLT | suficiente ao escopo | sem tópicos de retry escalonados |
 | Soft delete + checagem em app | limitação de unique parcial no MySQL | validação fora do banco |
-```
-
-Plano salvo em [PLANO-ARQUITETURA.md](PLANO-ARQUITETURA.md). Aqui está o resumo do que ele define para você validar:
-
-## Pontos-chave para você aprovar antes de codar
-
-**1. Estrutura** — Maven multi-módulo com um módulo `contracts` compartilhado (o POJO da mensagem Kafka + enums), mais os dois serviços. Cada serviço com seu próprio banco MySQL (database-per-service).
-
-**2. Contrato Kafka** — `AlertMessage` com `correlationId` como key da mensagem (garante ordenação + ajuda idempotência). Tópicos: `notifications.alerts` + `notifications.alerts.DLT`.
-
-**3. Modelagem crítica:**
-- **Event Store append-only**: `UNIQUE (correlation_id, status)` — isso resolve idempotência e append-only de uma vez só. Status atual = último evento.
-- **Soft delete + unicidade name/type**: resolvido na camada de serviço (limitação do MySQL com índice único parcial — documentado como trade-off).
-
-**4. Idempotência em 3 camadas** — check de evento terminal + unique constraint + `@Transactional`. Esse é um dos pontos que mais "pega" na avaliação.
-
-**5. Strategy pattern** — `AlertStrategy` + resolver por `Map<ChannelType, Strategy>`. Novo tipo = nova `@Component`, zero mudança no consumer.
-
-**6. Resiliência** — `DefaultErrorHandler` + `ExponentialBackOff` + `DeadLetterPublishingRecoverer`.
-
-**7. Kafka em modo KRaft** (sem Zookeeper) — compose mais enxuto e moderno.
-
-## Decisões que valem a pena você confirmar
-
-Antes de eu começar, três escolhas onde há alternativa legítima:
 
 
-<invoke name="AskUserQuestion">
-<parameter name="questions">[{"question": "Módulo contracts compartilhado ou contrato duplicado em cada serviço?", "header": "Contrato Kafka", "multiSelect": false, "options": [{"label": "Módulo compartilhado (Recomendado)", "description": "Um módulo 'contracts' com o AlertMessage e enums, usado pelos dois serviços. Evita drift, código mais limpo. Trade-off: leve acoplamento de build entre serviços."}, {"label": "Duplicar contrato", "description": "Cada serviço tem sua própria cópia do POJO da mensagem. Desacoplamento 'purista' de microsserviços. Trade-off: risco de divergência do contrato."}]}, {"question": "Um MySQL com 2 databases ou dois containers MySQL separados?", "header": "MySQL", "multiSelect": false, "options": [{"label": "Um MySQL, 2 databases (Recomendado)", "description": "Um único container com databases channels_db e events_db via script de init. Mais leve para subir localmente, menos recursos. Mantém isolamento lógico."}, {"label": "Dois containers MySQL", "description": "Um container por serviço. Isolamento físico total, mais fiel a produção. Trade-off: mais memória/CPU na máquina de avaliação."}]}, {"question": "Incluir testes de integração com Testcontainers?", "header": "Testcontainers", "multiSelect": false, "options": [{"label": "Sim, incluir (Recomendado)", "description": "Testes de integração com Kafka + MySQL reais via Testcontainers, provando o fluxo assíncrono end-to-end. Grande diferencial na avaliação. Adiciona ~0,5 dia."}, {"label": "Só testes unitários", "description": "JUnit 5 + Mockito cobrindo services, strategies, idempotência e template. Cumpre o requisito mínimo. Mais rápido, mas sem prova do fluxo real integrado."}]}]
