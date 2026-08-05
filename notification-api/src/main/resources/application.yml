@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: notification-api
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/channels_db?createDatabaseIfNotExist=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:app}
+    password: ${DB_PASSWORD:app}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+app:
+  kafka:
+    topics:
+      alerts: ${KAFKA_TOPIC_ALERTS:notifications.alerts}
+      partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.fintech.notifications: INFO

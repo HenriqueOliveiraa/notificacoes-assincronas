@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: alert-processor
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/events_db?createDatabaseIfNotExist=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:app}
+    password: ${DB_PASSWORD:app}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_GROUP_ID:alert-processor}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+
+app:
+  kafka:
+    topics:
+      alerts: ${KAFKA_TOPIC_ALERTS:notifications.alerts}
+      dlt: ${KAFKA_TOPIC_DLT:notifications.alerts.DLT}
+      partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    retry:
+      max-attempts: ${KAFKA_RETRY_MAX_ATTEMPTS:3}
+      initial-interval-ms: ${KAFKA_RETRY_INITIAL_MS:1000}
+      multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+      max-interval-ms: ${KAFKA_RETRY_MAX_MS:10000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.fintech.notifications: INFO

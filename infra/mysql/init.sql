@@ -1,0 +1,6 @@
+CREATE DATABASE IF NOT EXISTS channels_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS events_db   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+GRANT ALL PRIVILEGES ON channels_db.* TO 'app'@'%';
+GRANT ALL PRIVILEGES ON events_db.*   TO 'app'@'%';
+FLUSH PRIVILEGES;
